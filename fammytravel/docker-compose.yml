@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - backend
+
+  # Backend - Django API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/fammytravel
+      - DJANGO_SECRET_KEY=dev-secret-key-change-in-production
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+    command: python manage.py runserver 0.0.0.0:8000
+
+  # Database - PostgreSQL
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=fammytravel
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # WordPress (Headless CMS)
+  wordpress:
+    image: wordpress:6.7-php8.2-apache
+    ports:
+      - "8080:80"
+    environment:
+      - WORDPRESS_DB_HOST=db
+      - WORDPRESS_DB_NAME=fammytravel_wp
+      - WORDPRESS_DB_USER=postgres
+      - WORDPRESS_DB_PASSWORD=postgres
+    volumes:
+      - wordpress_data:/var/www/html
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  wordpress_data:
